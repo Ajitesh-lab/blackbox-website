@@ -1,15 +1,9 @@
 // One data file drives every /for/<company> page. Add a row, get a page.
-// Copy here must stay within the claims guardrails: no customers, no logos,
-// no certifications. Hero names the workflow, nothing more.
+// Only add a company once its copy is real. Copy must stay within the claims
+// guardrails: no customers, logos, certifications or unbuilt features.
 import type { Flavor } from "./sample-run";
 
-export type Company = {
-  slug: string;
-  name: string;
-  headline: string;
-  support: string;
-  flavor?: Flavor;
-};
+export type Company = { slug: string; name: string; headline: string; support: string; flavor?: Flavor };
 
 const deploy: Flavor = {
   workflow: "deploy",
@@ -32,25 +26,8 @@ export const COMPANIES: Company[] = [
     slug: "kestrel",
     name: "Kestrel",
     headline: "Replay every deploy your Kestrel agent makes.",
-    support:
-      "Black Box records each model and tool call at the gateway and seals it in a hash chain, so after a deploy you can show exactly what ran, in order, and prove the record wasn't edited.",
+    support: "Black Box records each model and tool call at the gateway and seals it in a hash chain, so after a deploy you can show exactly what ran, in order, and prove the record wasn't edited.",
     flavor: deploy,
-  },
-  // Placeholders for the rest of batch 1: fill in headline/support per
-  // target once the outreach log has each company's workflow.
-  {
-    slug: "struct",
-    name: "Struct",
-    headline: "Replay every action your Struct agent takes.",
-    support:
-      "Black Box records each model and tool call from outside the agent and seals it in a hash chain you can verify offline.",
-  },
-  {
-    slug: "depot",
-    name: "Depot",
-    headline: "Replay every build your Depot agent touches.",
-    support:
-      "Black Box records each model and tool call from outside the agent and seals it in a hash chain you can verify offline.",
   },
 ];
 

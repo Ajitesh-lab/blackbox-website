@@ -1,11 +1,11 @@
-import { FAQ } from "@/lib/faq";
+import type { QA } from "@/lib/faq";
 
-export function Faq({ limit }: { limit?: number }) {
+export function Faq({ items }: { items: QA[] }) {
   return (
     <div className="divide-y divide-line border-y border-line">
-      {FAQ.slice(0, limit).map((f) => (
+      {items.map((f) => (
         <details key={f.q} className="group py-4">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium">
+          <summary className="flex min-h-8 cursor-pointer list-none items-center justify-between gap-4 font-medium">
             {f.q}
             <span aria-hidden className="font-mono text-muted transition-transform group-open:rotate-45">+</span>
           </summary>

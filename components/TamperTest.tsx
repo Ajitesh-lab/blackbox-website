@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buildBodies, GENERIC, type Flavor } from "@/lib/sample-run";
 import { seal, verify, short, type Body, type VerifyResult } from "@/lib/chain";
+import { track } from "@/lib/analytics";
 
 export function TamperTest({ flavor = GENERIC }: { flavor?: Flavor }) {
   const original = useMemo(() => buildBodies(flavor), [flavor]);
@@ -21,6 +22,7 @@ export function TamperTest({ flavor = GENERIC }: { flavor?: Flavor }) {
   }, [bodies, sealed]);
 
   function edit(i: number, args: string) {
+    if (!touched) track("tamper_edit");
     setTouched(true);
     setBodies((bs) => bs.map((b, j) => (j === i ? { ...b, args } : b)));
   }
@@ -34,20 +36,20 @@ export function TamperTest({ flavor = GENERIC }: { flavor?: Flavor }) {
       <div className="card overflow-hidden">
         <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
           <span className="eyebrow">ledger · sample run</span>
-          <button onClick={reset} disabled={!touched} className="font-mono text-xs text-muted enabled:hover:text-fg disabled:opacity-40">reset</button>
+          <button onClick={reset} disabled={!touched} className="min-h-8 px-2 font-mono text-xs text-muted enabled:hover:text-fg disabled:opacity-60">reset</button>
         </div>
         <ol className="divide-y divide-line font-mono text-[12.5px]" aria-label="Hash-chained log entries">
           {bodies.map((b, i) => {
             const r = res?.rows[i];
             const broken = r ? !r.ok : false;
             return (
-              <li key={b.seq} className={`px-4 py-2.5 transition-colors ${broken ? "bg-accent/[0.07]" : ""}`}>
+              <li key={b.seq} className={`px-4 py-3 sm:py-2.5 transition-colors ${broken ? "bg-accent/[0.07]" : ""}`}>
                 <div className="flex items-start gap-3">
                   <span className="w-5 shrink-0 text-muted">{String(b.seq).padStart(2, "0")}</span>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline gap-x-2">
                       <span className={b.kind === "model" ? "text-muted" : "text-fg"}>{b.name}</span>
-                      <span className="text-muted">{b.t}</span>
+                      <span className="hidden text-muted sm:inline">{b.t}</span>
                     </div>
                     {editing === i ? (
                       <input
@@ -59,8 +61,8 @@ export function TamperTest({ flavor = GENERIC }: { flavor?: Flavor }) {
                         className="mt-1 w-full rounded border border-accent bg-bg px-2 py-1 text-fg"
                       />
                     ) : (
-                      <button onClick={() => setEditing(i)} className="mt-0.5 block w-full text-left text-muted hover:text-fg" title="Click to edit">
-                        {b.args} <span className="text-muted/60">→ {b.result}</span>
+                      <button onClick={() => setEditing(i)} className="mt-0.5 block min-h-8 w-full py-1 text-left text-muted hover:text-fg" title="Click to edit">
+                        {b.args} <span className="text-muted">→ {b.result}</span>
                       </button>
                     )}
                     <div className={`mt-1 flex items-center gap-2 ${broken ? "text-accent" : "text-ok/80"}`}>
@@ -78,7 +80,7 @@ export function TamperTest({ flavor = GENERIC }: { flavor?: Flavor }) {
 
       <div className="flex flex-col gap-4">
         <div className="card flex-1 overflow-hidden">
-          <div className="border-b border-line px-4 py-2.5"><span className="eyebrow">verifier · offline</span></div>
+          <div className="border-b border-line px-4 py-2.5"><span className="eyebrow">verifier · illustrative output</span></div>
           <pre className="whitespace-pre-wrap p-4 font-mono text-[12.5px] leading-6" aria-live="polite">
             <span className="text-muted">$ bbx verify run-0193.ledger</span>{"\n"}
             {res === null ? "…" : bad === null ? (
@@ -95,7 +97,7 @@ export function TamperTest({ flavor = GENERIC }: { flavor?: Flavor }) {
           </pre>
         </div>
         <p className="text-xs leading-5 text-muted">
-          Real SHA-256, computed in your browser. Nothing is sent anywhere. The sample run is illustrative, not customer data.
+          Real SHA-256, computed in your browser. Nothing is sent anywhere. The sample run is illustrative, not customer data. The offline verifier is in pilot.
         </p>
       </div>
     </div>
