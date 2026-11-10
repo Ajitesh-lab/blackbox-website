@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildBodies, GENERIC, type Flavor } from "@/lib/sample-run";
 
+/** The replay console. Fills its parent, so it works flat or on the laptop display. */
 export function Replay({ flavor = GENERIC }: { flavor?: Flavor }) {
   const steps = useMemo(() => buildBodies(flavor), [flavor]);
   const [i, setI] = useState(0);
@@ -13,35 +14,39 @@ export function Replay({ flavor = GENERIC }: { flavor?: Flavor }) {
   }, [playing, i, steps.length]);
   const s = steps[i];
   return (
-    <div className="card overflow-hidden">
-      <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
-        <span className="eyebrow">replay · run-0193</span>
-        <span className="font-mono text-xs text-muted">{s.t}</span>
+    <div className="flex h-full min-h-[380px] flex-col bg-bg">
+      <div className="flex h-9 shrink-0 items-center gap-3 border-b border-line px-3">
+        <span aria-hidden className="flex gap-1.5">{[0, 1, 2].map((k) => <span key={k} className="h-2 w-2 rounded-full bg-line" />)}</span>
+        <span className="label">Replay · run-0193</span>
+        <span className="tnum ml-auto font-mono text-[11px] text-muted">{s.t}</span>
       </div>
-      <div className="grid md:grid-cols-[220px_1fr]">
-        <ol className="max-h-[300px] overflow-auto border-b border-line font-mono text-xs md:border-b-0 md:border-r">
+      <div className="grid min-h-0 flex-1 md:grid-cols-[210px_1fr]">
+        <ol className="max-h-[220px] overflow-auto border-b border-line font-mono text-xs md:max-h-none md:border-b-0 md:border-r" aria-label="Recorded steps">
           {steps.map((x, j) => (
             <li key={x.seq}>
-              <button onClick={() => { setPlaying(false); setI(j); }} className={`flex w-full items-center gap-2 px-4 py-2 text-left ${j === i ? "bg-accent/10 text-fg" : "text-muted"} hover:text-fg`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${j <= i ? "bg-accent" : "bg-line"}`} />
-                {String(x.seq).padStart(2, "0")} {x.name}
+              <button type="button" aria-current={j === i ? "step" : undefined} onClick={() => { setPlaying(false); setI(j); }}
+                className={`flex h-[30px] w-full items-center gap-2.5 border-l-2 px-3 text-left transition-colors ${j === i ? "border-accent bg-white/[.04] text-fg" : "border-transparent text-muted hover:text-fg"}`}>
+                <span className={j <= i ? "text-accent" : "text-dim"}>{String(x.seq).padStart(2, "0")}</span>
+                <span className="truncate">{x.name}</span>
+                <span className="ml-auto text-[10px] text-dim">{x.kind}</span>
               </button>
             </li>
           ))}
         </ol>
-        <div className="p-5 font-mono text-[13px] leading-7">
-          <div className="text-muted">{s.kind === "model" ? "model call" : "tool call"}</div>
-          <div className="text-lg text-fg">{s.name}</div>
-          <div className="mt-3 text-muted">args</div>
-          <div className="break-words">{s.args}</div>
-          <div className="mt-3 text-muted">result</div>
-          <div className="break-words text-ok">{s.result}</div>
+        <div className="min-w-0 p-5 font-mono text-[13px] leading-6" aria-live="polite">
+          <div className="label">{s.kind === "model" ? "Model call" : "Tool call"} · entry {String(s.seq).padStart(2, "0")} of {steps.length}</div>
+          <div className="mt-2 font-sans text-2xl font-medium tracking-tight text-fg">{s.name}</div>
+          <dl className="mt-5 grid grid-cols-[64px_1fr] gap-x-4 gap-y-3">
+            <dt className="text-dim">args</dt><dd className="min-w-0 break-words">{s.args}</dd>
+            <dt className="text-dim">result</dt><dd className="min-w-0 break-words text-ok">{s.result}</dd>
+            <dt className="text-dim">at</dt><dd className="tnum text-muted">{s.t}</dd>
+          </dl>
         </div>
       </div>
-      <div className="flex items-center gap-3 border-t border-line px-4 py-3">
-        <button type="button" className="min-h-8 rounded-md border border-line px-3 font-mono text-xs hover:border-muted" onClick={() => { if (i >= steps.length - 1) setI(0); setPlaying((p) => !p); }}>{playing ? "pause" : "play"}</button>
+      <div className="flex h-12 shrink-0 items-center gap-3 border-t border-line px-3">
+        <button type="button" className="h-7 w-14 rounded border border-line font-mono text-[11px] hover:border-dim" onClick={() => { if (i >= steps.length - 1) setI(0); setPlaying((p) => !p); }}>{playing ? "pause" : "play"}</button>
         <label htmlFor="scrub" className="sr-only">Scrub through the run</label>
-        <input id="scrub" type="range" min={0} max={steps.length - 1} value={i} onChange={(e) => { setPlaying(false); setI(+e.target.value); }} className="w-full flex-1 accent-[#ff4f00]" />
+        <input id="scrub" type="range" min={0} max={steps.length - 1} value={i} onChange={(e) => { setPlaying(false); setI(+e.target.value); }} className="scrub w-full flex-1" />
       </div>
     </div>
   );

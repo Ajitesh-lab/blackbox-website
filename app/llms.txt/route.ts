@@ -13,11 +13,13 @@ export function GET() {
 Black Box is built by Radius. It is early: there are no customers yet, and no certifications. ${OFFER.note}
 
 ## Key pages
-- [Home](${abs("/")}): what Black Box is, plus a live tamper test that runs SHA-256 in your browser
+- [Home](${abs("/")}): what Black Box is, a live tamper test that runs SHA-256 in your browser, and a replay of a sample run
 - [How it works](${abs("/how-it-works")}): the gateway, the hash-chain format, offline verification, and what it does not do
 - [For insurers](${abs("/insurers")}): verifying AI agent claims from an independent record
 - [Security and FAQ](${abs("/security")}): data handling and honest answers
 - [Glossary](${abs("/glossary")}): definitions of the terms used
+- [Guides](${abs("/learn")}): all explainers
+- [Book a call](${abs("/book")}): 15-minute intro call
 - [Privacy](${abs("/privacy")})
 
 ## Guides

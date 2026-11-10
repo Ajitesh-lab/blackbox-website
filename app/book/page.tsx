@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { DocPage } from "@/components/DocPage";
 import { Calendly } from "@/components/Calendly";
 import { CALL_MINUTES } from "@/lib/site";
+import { JsonLd } from "@/components/JsonLd";
+import { breadcrumbs } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: `Book a ${CALL_MINUTES}-min intro call`,
@@ -12,7 +14,7 @@ export const metadata: Metadata = {
 export default async function Page({ searchParams }: { searchParams: Promise<{ c?: string }> }) {
   const c = (await searchParams).c;
   return (
-    <DocPage title={`Book a ${CALL_MINUTES}-min intro call`} intro="Bring one workflow your agent runs. We'll show you what its record would look like.">
+    <DocPage crumb="Book a call" title={`Book a ${CALL_MINUTES}-min intro call`} intro="Bring one workflow your agent runs. We'll show you what its record would look like.">
       <section>
         <h2>Before you book</h2>
         <ul className="list-disc space-y-1 pl-5 text-muted">
@@ -22,6 +24,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ c
         </ul>
       </section>
       <Calendly campaign={c ?? "book"} eager />
+      <JsonLd data={breadcrumbs([{ name: "Home", path: "/" }, { name: "Book a call", path: "/book" }])} />
     </DocPage>
   );
 }

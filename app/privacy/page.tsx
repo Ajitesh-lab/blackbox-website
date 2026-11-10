@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Privacy", description: "What this si
 
 export default function Page() {
   return (
-    <DocPage title="Privacy" intro="Plain English. This site collects very little.">
+    <DocPage crumb="Privacy" title="Privacy" intro="Plain English. This site collects very little.">
       <section><h2>The technical brief form</h2><p>If you ask for the technical brief, we collect your email address and which page you came from. We use it to send you the brief and to follow up about Black Box. We don't sell it or share it.</p></section>
       <section><h2>Booking a call</h2><p>The booking calendar is provided by Calendly. When you book, Calendly collects your name, email and answers, under its own privacy policy.</p></section>
       <section><h2>Analytics</h2><p>We use privacy-friendly, cookieless analytics to count page views and a few key actions (such as booking clicks). It doesn't track you across sites.</p></section>

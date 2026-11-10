@@ -16,7 +16,7 @@ export default function Page() {
     <>
       <JsonLd data={faqLd(FAQ_SECURITY)} />
       <JsonLd data={breadcrumbs([{ name: "Home", path: "/" }, { name: "Security & FAQ", path: "/security" }])} />
-      <DocPage title="What we handle, and what we don't claim." intro="Black Box is early. We'd rather you know exactly where it stands.">
+      <DocPage crumb="Security & FAQ" title="What we handle, and what we don't claim." intro="Black Box is early. We'd rather you know exactly where it stands.">
       <section>
         <h2>Data handling</h2>
         <p>The gateway sees the calls your agent makes, so it sees their arguments and results. Hosting region and retention are agreed with you in writing before the pilot starts.</p>

@@ -1,7 +1,6 @@
 import type { Config } from "tailwindcss";
 
-// Design tokens live in app/globals.css as CSS variables so the light
-// (docs) theme can swap them without touching components.
+// Design tokens live in app/globals.css as CSS variables.
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.ts"],
   theme: {
@@ -9,18 +8,19 @@ const config: Config = {
       colors: {
         bg: "rgb(var(--bg) / <alpha-value>)",
         panel: "rgb(var(--panel) / <alpha-value>)",
+        raise: "rgb(var(--raise) / <alpha-value>)",
         line: "rgb(var(--line) / <alpha-value>)",
         fg: "rgb(var(--fg) / <alpha-value>)",
         muted: "rgb(var(--muted) / <alpha-value>)",
+        dim: "rgb(var(--dim) / <alpha-value>)",
         accent: "rgb(var(--accent) / <alpha-value>)",
         ok: "rgb(var(--ok) / <alpha-value>)",
       },
       fontFamily: {
-        sans: ["Inter Variable", "Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
-        mono: ["JetBrains Mono Variable", "JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
-      letterSpacing: { display: "-0.035em" },
-      maxWidth: { page: "1120px" },
+      maxWidth: { page: "1200px" },
     },
   },
   plugins: [],
