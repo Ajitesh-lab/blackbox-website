@@ -4,6 +4,8 @@ import { Footer } from "@/components/Footer";
 import { HowDiagram } from "@/components/HowDiagram";
 import { BookLink } from "@/components/BookLink";
 import { CALL_LABEL } from "@/lib/site";
+import { JsonLd } from "@/components/JsonLd";
+import { abs, breadcrumbs, MODIFIED, ORG_ID, PUBLISHED, SITE_ID } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "How Black Box records and verifies an agent run",
@@ -45,6 +47,8 @@ entry      = [seq, timestamp, kind, name, args, result]`}</pre>
         </div>
       </main>
       <Footer />
+      <JsonLd data={{ "@context": "https://schema.org", "@type": "TechArticle", headline: "How Black Box records and verifies an agent run", description: metadata.description, datePublished: PUBLISHED, dateModified: MODIFIED, url: abs("/how-it-works"), mainEntityOfPage: abs("/how-it-works"), isPartOf: { "@id": SITE_ID }, author: { "@id": ORG_ID }, publisher: { "@id": ORG_ID } }} />
+      <JsonLd data={breadcrumbs([{ name: "Home", path: "/" }, { name: "How it works", path: "/how-it-works" }])} />
     </>
   );
 }

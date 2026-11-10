@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { DocPage } from "@/components/DocPage";
 import { Faq } from "@/components/Faq";
 import { FAQ_SECURITY } from "@/lib/faq";
+import { JsonLd } from "@/components/JsonLd";
+import { breadcrumbs, faqLd } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Security & FAQ",
@@ -11,7 +13,10 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <DocPage title="What we handle, and what we don't claim." intro="Black Box is early. We'd rather you know exactly where it stands.">
+    <>
+      <JsonLd data={faqLd(FAQ_SECURITY)} />
+      <JsonLd data={breadcrumbs([{ name: "Home", path: "/" }, { name: "Security & FAQ", path: "/security" }])} />
+      <DocPage title="What we handle, and what we don't claim." intro="Black Box is early. We'd rather you know exactly where it stands.">
       <section>
         <h2>Data handling</h2>
         <p>The gateway sees the calls your agent makes, so it sees their arguments and results. Hosting region and retention are agreed with you in writing before the pilot starts.</p>
@@ -25,5 +30,6 @@ export default function Page() {
         <Faq items={FAQ_SECURITY} />
       </section>
     </DocPage>
+    </>
   );
 }

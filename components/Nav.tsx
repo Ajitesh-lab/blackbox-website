@@ -8,6 +8,7 @@ import { CALL_LABEL } from "@/lib/site";
 const LINKS = [
   ["/how-it-works", "How it works"],
   ["/insurers", "For insurers"],
+  ["/learn", "Learn"],
   ["/security", "Security & FAQ"],
 ] as const;
 

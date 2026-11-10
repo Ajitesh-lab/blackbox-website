@@ -12,6 +12,8 @@ export function Footer() {
         <div className="flex flex-wrap gap-x-5 gap-y-1">
           <Link className="py-1 hover:text-fg" href="/how-it-works">How it works</Link>
           <Link className="py-1 hover:text-fg" href="/insurers">For insurers</Link>
+          <Link className="py-1 hover:text-fg" href="/learn">Learn</Link>
+          <Link className="py-1 hover:text-fg" href="/glossary">Glossary</Link>
           <Link className="py-1 hover:text-fg" href="/security">Security &amp; FAQ</Link>
           <Link className="py-1 hover:text-fg" href="/privacy">Privacy</Link>
         </div>

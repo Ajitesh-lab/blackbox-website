@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { DocPage } from "@/components/DocPage";
 import { BookLink } from "@/components/BookLink";
 import { OFFER, CALL_LABEL } from "@/lib/site";
+import { JsonLd } from "@/components/JsonLd";
+import { breadcrumbs } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "For insurers: verify agent claims from an independent record",
@@ -18,7 +20,9 @@ const FLOW = [
 
 export default function Page() {
   return (
-    <DocPage title="Settle agent claims from a record nobody can quietly edit." intro="When an AI agent causes a loss, the evidence is usually the agent's own account, or logs its operator can change. Black Box gives you an independent one.">
+    <>
+      <JsonLd data={breadcrumbs([{ name: "Home", path: "/" }, { name: "For insurers", path: "/insurers" }])} />
+      <DocPage title="Settle agent claims from a record nobody can quietly edit." intro="When an AI agent causes a loss, the evidence is usually the agent's own account, or logs its operator can change. Black Box gives you an independent one.">
       <section>
         <h2>The problem for insurers</h2>
         <p>An agent that deletes data, moves money or deploys bad code leaves a trail that the policyholder controls. It's hard to verify a claim, or rule out fraud, from a record the claimant could have altered.</p>
@@ -42,5 +46,6 @@ export default function Page() {
         <div className="mt-6"><BookLink where="insurers">{CALL_LABEL}</BookLink></div>
       </section>
     </DocPage>
+    </>
   );
 }

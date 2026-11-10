@@ -11,6 +11,9 @@ import { Calendly } from "./Calendly";
 import { BriefForm } from "./BriefForm";
 import { BookLink } from "./BookLink";
 import { Reveal } from "./Reveal";
+import { JsonLd } from "./JsonLd";
+import { ARTICLES } from "@/lib/articles";
+import { ENTITY_DEFINITION, faqLd } from "@/lib/seo";
 import { FAQ_HOME } from "@/lib/faq";
 import { CALL_LABEL, CALL_MINUTES, OFFER } from "@/lib/site";
 import type { Company } from "@/lib/companies";
@@ -54,6 +57,7 @@ export function HomePage({ company }: { company?: Company }) {
   const slug = company?.slug;
   return (
     <>
+      {!company && <JsonLd data={faqLd(FAQ_HOME)} />}
       <Nav campaign={slug} />
       <main id="main">
         <section className="relative overflow-hidden">
@@ -71,6 +75,11 @@ export function HomePage({ company }: { company?: Company }) {
             </div>
             <HeroLedger />
           </div>
+        </section>
+
+        <section aria-labelledby="what-is" className="mx-auto max-w-page px-4 pt-16 sm:px-6 sm:pt-20">
+          <h2 id="what-is" className="eyebrow mb-3">What is Black Box?</h2>
+          <p className="max-w-3xl text-xl leading-9 sm:text-2xl sm:leading-10">{ENTITY_DEFINITION}</p>
         </section>
 
         <section aria-label="Who it's for" className="mx-auto grid max-w-page gap-px overflow-hidden border-y border-line bg-line px-0 sm:grid-cols-2 sm:rounded-xl sm:border">
@@ -149,6 +158,15 @@ export function HomePage({ company }: { company?: Company }) {
 
         <Section title="Questions teams ask us">
           <Faq items={FAQ_HOME} />
+        </Section>
+
+        <Section title="Learn the ideas behind it">
+          <ul className="grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2">
+            {ARTICLES.slice(0, 4).map((a) => (
+              <li key={a.slug} className="bg-bg"><Link href={`/learn/${a.slug}`} className="block h-full p-5 hover:bg-panel"><div className="font-medium">{a.h1}</div><p className="mt-1.5 text-sm leading-6 text-muted">{a.answer.split(". ")[0]}.</p></Link></li>
+            ))}
+          </ul>
+          <Link href="/learn" className="mt-6 inline-block text-sm text-muted hover:text-fg">All guides →</Link>
         </Section>
 
         <Section id="call" title={`Book a ${CALL_MINUTES}-min call. Bring one agent workflow and we'll show you what its record would look like.`}>
