@@ -11,7 +11,7 @@ import { track } from "@/lib/analytics";
 export function Calendly({ campaign = "direct", eager = false }: { campaign?: string; eager?: boolean }) {
   const [on, setOn] = useState(eager);
   const box = useRef<HTMLDivElement>(null);
-  const src = `${CALENDLY_URL}?hide_event_type_details=1&hide_gdpr_banner=1&background_color=0a0a0b&text_color=ededee&primary_color=ff4f00&utm_source=site&utm_campaign=${encodeURIComponent(campaign)}`;
+  const src = `${CALENDLY_URL}?hide_event_type_details=1&hide_gdpr_banner=1&background_color=0d0d10&text_color=ececee&primary_color=ff4f00&utm_source=site&utm_campaign=${encodeURIComponent(campaign)}`;
 
   useEffect(() => {
     if (on || !box.current) return;
@@ -29,7 +29,7 @@ export function Calendly({ campaign = "direct", eager = false }: { campaign?: st
   }, [campaign]);
 
   return (
-    <div ref={box} className="overflow-hidden rounded-xl border border-line bg-panel">
+    <div ref={box} className="overflow-hidden rounded-[14px] bg-panel">
       {on ? (
         <iframe title={`Pick a time for a ${CALL_MINUTES}-minute call`} src={src} loading="lazy" className="block h-[1000px] w-full sm:h-[720px]" />
       ) : (

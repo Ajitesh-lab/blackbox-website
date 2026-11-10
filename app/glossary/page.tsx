@@ -14,12 +14,12 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <>
-      <DocPage title="Glossary" intro="Short definitions of the terms used on this site.">
+      <DocPage crumb="Glossary" title="Glossary" intro="Short definitions of the terms used on this site.">
         <dl className="divide-y divide-line border-y border-line">
           {GLOSSARY.map((g) => (
             <div key={g.term} id={g.term.toLowerCase().replace(/[^a-z0-9]+/g, "-")} className="py-5">
-              <dt className="font-medium text-fg">{g.term}</dt>
-              <dd className="mt-1.5 leading-7 text-muted">{g.def}{g.link && <> <Link className="underline underline-offset-4 hover:text-accent" href={g.link}>Read more</Link></>}</dd>
+              <dt className="text-xl font-medium tracking-tight text-fg">{g.term}</dt>
+              <dd className="mt-1.5 leading-7 text-muted">{g.def}{g.link && <> <Link className="link" href={g.link}>Read more</Link></>}</dd>
             </div>
           ))}
         </dl>

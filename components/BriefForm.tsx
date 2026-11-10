@@ -23,7 +23,7 @@ export function BriefForm({ campaign }: { campaign?: string }) {
     <form onSubmit={onSubmit} className="flex flex-col gap-2 sm:flex-row">
       <label className="sr-only" htmlFor="brief-email">Work email</label>
       <input id="brief-email" name="email" type="email" required autoComplete="email" placeholder="you@company.com"
-        className="h-11 flex-1 rounded-lg border border-line bg-panel px-3 text-sm placeholder:text-muted" />
+        className="h-11 shrink-0 rounded-full sm:flex-1 border border-line bg-panel px-4 text-sm placeholder:text-dim" />
       <input name="company_website" tabIndex={-1} autoComplete="off" aria-hidden className="hidden" />
       <button disabled={state === "sending"} className="btn btn-ghost">{state === "sending" ? "Sending…" : "Get the technical brief by email"}</button>
       {state === "error" && (
