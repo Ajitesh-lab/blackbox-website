@@ -1,7 +1,7 @@
 // Single source of truth for facts that appear in several places.
 export const CALL_MINUTES = 15;
 export const CALL_LABEL = `Book a ${CALL_MINUTES}-min call`;
-export const CALENDLY_URL = "https://calendly.com/ajiteshrawat/30min"; // slug says 30min; the event is 15 min
+export const CALENDLY_URL = "https://calendly.com/ajitesh-rawat";
 export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "";
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://blackbox-by-radius.netlify.app";
 
