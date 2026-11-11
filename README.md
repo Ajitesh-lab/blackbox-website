@@ -24,3 +24,5 @@ Claims guardrails: no customers, logos, certifications or unbuilt features on an
 - Per-page metadata and canonical URLs; JSON-LD for Organization, WebSite, SoftwareApplication, WebPage, TechArticle, FAQPage, BreadcrumbList, DefinedTermSet, Service and ItemList.
 - `sitemap.xml`, `robots.txt`, `feed.xml`, `llms.txt` and `llms-full.txt` are generated from the same data as the pages.
 - To add a guide, add an entry to `ARTICLES` in `lib/articles.ts`; the page, OG image, sitemap, feed, footer link and llms files follow.
+
+Preview the production build: `npm run build && npm start`.
