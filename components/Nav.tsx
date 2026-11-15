@@ -3,8 +3,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Logo } from "./Logo";
-import { BookLink } from "./BookLink";
-import { CALL_LABEL } from "@/lib/site";
+
+import { CALENDLY_URL } from "@/lib/site";
 
 const LINKS = [
   ["/how-it-works", "How it works"],
@@ -13,18 +13,18 @@ const LINKS = [
   ["/security", "Security & FAQ"],
 ] as const;
 
-export function Nav({ campaign }: { campaign?: string }) {
+export function Nav({ campaign: _campaign }: { campaign?: string }) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
   return (
-    <header className="sticky top-0 z-40 bg-bg/70 backdrop-blur-md">
+    <header className="site-nav sticky top-0 z-40">
       <div className="frame flex h-14 items-center justify-between">
         <Link href="/" aria-label="Black Box home"><Logo /></Link>
         <nav className="flex items-center gap-1 text-sm text-muted sm:gap-4" aria-label="Main">
           {LINKS.map(([h, l]) => (
             <Link key={h} aria-current={path.startsWith(h) ? "page" : undefined} className="hidden px-2 py-2 transition-colors hover:text-fg aria-[current]:text-fg md:block" href={h}>{l}</Link>
           ))}
-          <BookLink campaign={campaign} where="nav" className="btn btn-primary !h-9 !px-4 !text-sm md:ml-2">{CALL_LABEL}</BookLink>
+          <a href={CALENDLY_URL} className="nav-briefing">Request briefing ↗</a>
           <button
             type="button" className="grid h-11 w-11 place-items-center rounded-md hover:text-fg md:hidden"
             aria-expanded={open} aria-controls="mobile-menu" aria-label={open ? "Close menu" : "Open menu"}

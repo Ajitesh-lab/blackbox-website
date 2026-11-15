@@ -11,7 +11,7 @@ const sans = localFont({ src: "./fonts/plex-sans.woff2", weight: "100 700", vari
 const mono = localFont({ src: [{ path: "./fonts/plex-mono-400.woff2", weight: "400" }, { path: "./fonts/plex-mono-500.woff2", weight: "500" }], variable: "--font-mono", display: "swap" });
 
 const TITLE = "Black Box: tamper-evident audit logs for AI agents";
-const DESC = "Black Box records every model and tool call your AI agent makes, from outside the agent, in a tamper-evident log anyone can verify.";
+const DESC = "Tamper-evident records of what your AI agents did. Independently verifiable. Offline.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -39,8 +39,7 @@ const jsonLd = {
     {
       "@type": "SoftwareApplication", "@id": APP_ID, name: "Black Box", alternateName: "Black Box flight recorder for AI agents",
       applicationCategory: "DeveloperApplication", applicationSubCategory: "AI agent audit logging", operatingSystem: "Web", image: `${SITE_URL}/opengraph-image`, audience: { "@type": "BusinessAudience", audienceType: "Teams building AI agents, and insurers covering them" }, description: ENTITY_DEFINITION, url: SITE_URL,
-      publisher: { "@id": ORG_ID }, featureList: ["Records every model and tool call at a gateway outside the agent", "SHA-256 hash-chained, tamper-evident ledger", "Offline verification of exported ledgers (in pilot)", "Step-by-step replay of recorded runs"],
-      offers: { "@type": "Offer", name: "Free 2-week pilot", price: "0", priceCurrency: "GBP", url: `${SITE_URL}/#pilot`, availability: "https://schema.org/LimitedAvailability" },
+      publisher: { "@id": ORG_ID }, featureList: ["Tamper-evident records of agent actions", "SHA-256 hash-chained, tamper-evident ledger", "Offline verification of exported ledgers (in pilot)", "Step-by-step replay of recorded runs"],
     },
   ],
 };
