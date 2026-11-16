@@ -7,13 +7,25 @@ export function Verification() {
   useEffect(() => {
     const node = panel.current;
     if (!node) return;
-    let timer: ReturnType<typeof setTimeout>;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) timer = setTimeout(() => { setFailed(true); window.dispatchEvent(new CustomEvent("flight-tamper", { detail: true })); }, 1700);
-      else { clearTimeout(timer); setFailed(false); window.dispatchEvent(new CustomEvent("flight-tamper", { detail: false })); }
-    }, { threshold: 0.55 });
-    observer.observe(node);
-    return () => { observer.disconnect(); clearTimeout(timer); };
+    const section = node.closest(".flight-section")!;
+    let active = false;
+    const update = () => {
+      const nav = document.querySelector(".site-nav")?.getBoundingClientRect().height ?? 78;
+      const rect = section.getBoundingClientRect();
+      const next = rect.top <= nav + 2 && rect.bottom > nav + 2;
+      if (next === active) return;
+      active = next;
+      setFailed(next);
+      window.dispatchEvent(new CustomEvent("flight-tamper", { detail: next }));
+    };
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    update();
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      window.dispatchEvent(new CustomEvent("flight-tamper", { detail: false }));
+    };
   }, []);
   return <figure ref={panel} className={`verification-panel ${failed ? "integrity-failed" : ""}`}>
     <div className="terminal-top"><span>INDEPENDENT VERIFICATION</span><span>OFFLINE</span></div>

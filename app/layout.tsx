@@ -1,13 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import localFont from "next/font/local";
+import { Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
 import { SITE_URL } from "@/lib/site";
 import { JsonLd } from "@/components/JsonLd";
 import { APP_ID, ENTITY_DEFINITION, ORG_ID, SITE_ID } from "@/lib/seo";
 
 // Self-hosted, preloaded, with metric-matched fallbacks so text doesn't shift.
-const sans = localFont({ src: "./fonts/plex-sans.woff2", weight: "100 700", variable: "--font-sans", display: "swap" });
+const sans = Schibsted_Grotesk({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-sans", display: "swap" });
 const mono = localFont({ src: [{ path: "./fonts/plex-mono-400.woff2", weight: "400" }, { path: "./fonts/plex-mono-500.woff2", weight: "500" }], variable: "--font-mono", display: "swap" });
 
 const TITLE = "Black Box: tamper-evident audit logs for AI agents";
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
   openGraph: { type: "website", siteName: "Black Box", title: TITLE, description: DESC, url: "/", locale: "en_GB" },
   twitter: { card: "summary_large_image", title: TITLE, description: DESC },
 };
-export const viewport: Viewport = { themeColor: "#08080a", colorScheme: "dark" };
+export const viewport: Viewport = { themeColor: "#080808", colorScheme: "dark" };
 
 const jsonLd = {
   "@context": "https://schema.org",

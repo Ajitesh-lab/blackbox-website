@@ -1,15 +1,23 @@
-# Flight recorder visual system
+# Black Box visual system
 
-A security reviewer examining a sealed evidence object in a dark inspection room: the object receives the light, while the interface recedes.
+The reference is the Swiss institutional typography of the [Swiss National Library](https://www.nb.admin.ch/): plain grotesk text, a consistent left edge, clear hierarchy and restrained weights. This follows its typographic approach rather than claiming to reproduce its exact font.
+
+## Type and grid
+Schibsted Grotesk (SIL Open Font License, next/font/google) sets headlines and body at 400 and 500. IBM Plex Mono (SIL Open Font License, locally hosted through next/font/local) sets terminal text and uppercase micro-labels. Headlines have tight tracking; labels use .15em spacing. Only labels decode, once, over 180ms, using a dash rather than random glyphs. Major headings are always readable.
+
+The existing hero, RECORD, VERIFY and PRIVATE BRIEFING sequence and copy remain. Text aligns to the 7.3vw column; the product render is positioned on the right quarter of the viewport. On mobile a detailed static recorder sits above each section’s content. Navigation keeps the briefing action and menu within the viewport.
 
 ## Palette
-Restrained: void #07090c, graphite #161b22, ivory #eeeee7, steel #98aabd, cool light #c1d9eb. Failure red #ef625c is reserved for integrity failure.
+Black #080808, graphite #181818, rule #333333, secondary #aaaaaa, paper #eeeeee, white #ffffff. All surfaces, lights and borders are neutral. Signal red #FF3B30 appears only for integrity failure: the displaced plate, broken links, glass scan, TAMPERED engraving, housing LED and terminal failure row. Bloom stays tight; no scene wash.
 
-## Typography
-Existing locally hosted Plex Sans for grounded grotesk headlines and prose; Plex Mono for evidence fragments, sequence labels, terminal output. Headlines clamp(44px, 7vw, 104px), tight tracking. Stable accessible text accompanies short, one-shot 620ms scrambles.
+## Object and motion
 
-## Composition
-Hero: left-aligned oversized headline, enormous lit tesseract right and behind, quiet bottom metadata. Record and verify share a compact second movement; private briefing is a spacious closing movement. A single canvas stays behind DOM text, without pinning content. No card grid or decorative dashboard chrome.
+The reference is `design/recorder-concept.jpg`: a sealed matte black flight recorder. A chamfered Shape and bevelled ExtrudeGeometry form the deep solid body and front shell, with a visible shell seam. The envelope is approximately 1 : 1.15 : 0.85. Merged geometric milled ribs carry an emissive white writing pulse. Raised lathed bosses surround countersunk extruded hex sockets. Side fins sit behind raised structural frames. A separate CanvasTexture label engraves BLACK BOX / FDR-01 / SEALED. A stepped extruded cradle and four feet support the enclosure.
 
-## Motion and fallback
-CPU 4D projection morphs into a chain, fractures, then seals. Static CSS geometry remains available on mobile, reduced motion, loading, and graphics failure. All content and links are server rendered. Hover and keyboard focus reveal optional hash fragments.
+VERIFY displaces four ribs by 4.5mm at the model scale, reveals a thin red gap, blinks the red LED, sweeps a red scan once, and changes the label to TAMPERED. Leaving verification reseats the section, fades the red and restores the dim white LED. No glass or internal plate stack remains.
+
+MeshPhysicalMaterial uses matte anodised black, roughness .55, metalness .42, with satin socket hardware and a darker cradle. Local Environment Lightformers provide key, fill and rim without network assets. Contact shadows bake once; half-resolution N8AO and tight bloom finish the scene.
+
+One WebGL canvas is fixed below navigation, outside the main content and without clipping ancestors. Scroll maps real reserved model rectangles into camera space: hero right, RECORD left, VERIFY right opposite the terminal, and briefing smaller below the CTA. Eased position, rotation, scale and camera follow these anchors. Rendering pauses only when no flight section is visible or the document is hidden. DPR caps at 1.5. Repeated ribs, fins, frames and feet use merged geometry. The steady draw budget targets fewer than 60 calls; confirm via a browser GPU capture before release.
+
+Below 820px, reduced motion, loading or WebGL failure, a single reference-image poster occupies each section's reserved slot. Posters hide when the canvas is ready. `scripts/render-poster.mjs` can replace the temporary reference with a headless scene capture. HeroMedia retains its video mode.

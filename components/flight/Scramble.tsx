@@ -14,8 +14,8 @@ export function Scramble({ text }: { text: string }) {
       started = true;
       const start = performance.now();
       const tick = (now: number) => {
-        const progress = Math.min(1, (now - start) / 620);
-        node.textContent = [...text].map((char, i) => char === " " || i / text.length < progress ? char : "01/░+:×"[Math.floor(Math.random() * 7)]).join("");
+        const progress = Math.min(1, (now - start) / 180);
+        node.textContent = [...text].map((char, i) => char === " " || i / text.length < progress ? char : "—").join("");
         if (progress < 1) frame = requestAnimationFrame(tick);
       };
       frame = requestAnimationFrame(tick);

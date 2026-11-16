@@ -2,9 +2,9 @@
 export function LogoMark({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden>
-      <rect width="32" height="32" rx="7" fill="#c1d9eb" />
-      <rect x="9" y="6.5" width="14" height="9.5" rx="3.5" fill="none" stroke="#0a0a0b" strokeWidth="2.6" />
-      <rect x="9" y="14" width="15.5" height="11.5" rx="3.5" fill="none" stroke="#0a0a0b" strokeWidth="2.6" />
+      <rect width="32" height="32" rx="7" fill="#dedede" />
+      <rect x="9" y="6.5" width="14" height="9.5" rx="3.5" fill="none" stroke="#0a0a0a" strokeWidth="2.6" />
+      <rect x="9" y="14" width="15.5" height="11.5" rx="3.5" fill="none" stroke="#0a0a0a" strokeWidth="2.6" />
     </svg>
   );
 }

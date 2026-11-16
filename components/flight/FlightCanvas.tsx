@@ -1,220 +1,155 @@
 "use client";
 
-import { Canvas, useFrame, useThree, type RootState } from "@react-three/fiber";
-import { PerspectiveCamera } from "@react-three/drei";
-import { Bloom, ChromaticAberration, EffectComposer, Noise } from "@react-three/postprocessing";
-import { BlendFunction, ChromaticAberrationEffect } from "postprocessing";
+import { Canvas, useFrame, type RootState } from "@react-three/fiber";
+import { ContactShadows, Environment, Lightformer, PerspectiveCamera } from "@react-three/drei";
+import { Bloom, EffectComposer, N8AO } from "@react-three/postprocessing";
 import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import * as THREE from "three";
-import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
-// Four-dimensional hypercube: edges differ in exactly one coordinate.
-const VERTICES = Array.from({ length: 16 }, (_, i) => [0, 1, 2, 3].map(bit => (i & (1 << bit)) ? 1 : -1));
-const EDGES: [number, number][] = [];
-for (let i = 0; i < 16; i++) for (let bit = 0; bit < 4; bit++) if (i < (i ^ (1 << bit))) EDGES.push([i, i ^ (1 << bit)]);
-const FACES: number[][] = [];
-for (let a = 0; a < 4; a++) for (let b = a + 1; b < 4; b++) {
-  for (let i = 0; i < 16; i++) if (!(i & (1 << a)) && !(i & (1 << b))) {
-    FACES.push([i, i ^ (1 << a), i ^ (1 << a) ^ (1 << b), i ^ (1 << b)]);
-  }
+type Motion = { x: number; y: number; size: number; stage: number; visible: boolean };
+// Dimensions in decimetres: body 2.4 × 2.76 × 2.04, excluding the cradle.
+function outline(w: number, h: number, c: number) {
+  const shape = new THREE.Shape();
+  shape.moveTo(-w/2+c,-h/2); shape.lineTo(w/2-c,-h/2); shape.lineTo(w/2,-h/2+c);
+  shape.lineTo(w/2,h/2-c); shape.lineTo(w/2-c,h/2); shape.lineTo(-w/2+c,h/2);
+  shape.lineTo(-w/2,h/2-c); shape.lineTo(-w/2,-h/2+c); shape.closePath(); return shape;
 }
-const smooth = (a: number, b: number, x: number) => THREE.MathUtils.smoothstep(x, a, b);
-
-const vertexShader = `
-  varying vec3 vNormal; varying vec3 vPosition; varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    vec4 local = instanceMatrix * vec4(position, 1.0);
-    vPosition = local.xyz;
-    vNormal = normalize(normalMatrix * mat3(instanceMatrix) * normal);
-    gl_Position = projectionMatrix * modelViewMatrix * local;
-  }
-`;
-const blockFragment = `
-  uniform float uTime; uniform float uFracture;
-  varying vec3 vNormal; varying vec3 vPosition; varying vec2 vUv;
-  void main() {
-    float rim = pow(1.0 - abs(vNormal.z), 2.0);
-    float seams = step(.47, max(abs(vUv.x-.5), abs(vUv.y-.5)));
-    float fracture = step(.6, sin(vPosition.x*22.0+vPosition.y*17.0)) * uFracture * step(.0,vPosition.x) * (1.-step(1.8,vPosition.x));
-    vec3 graphite = vec3(.045,.062,.08) + max(dot(vNormal,normalize(vec3(-1.,2.,3.))),0.)*.12;
-    vec3 color = graphite + vec3(.38,.53,.66)*(rim*.8+seams*.65);
-    color = mix(color,vec3(1.4,.12,.09),fracture*.7);
-    gl_FragColor = vec4(color,1.);
-  }
-`;
-const edgeFragment = `
-  uniform float uTime; uniform float uFracture;
-  varying vec3 vNormal; varying vec3 vPosition; varying vec2 vUv;
-  void main() {
-    float pulse = pow(max(0.,sin(vUv.y*18.-uTime*1.4+vPosition.x)),16.);
-    float rim = .5+.5*abs(vNormal.z);
-    float damaged = uFracture * step(.0,vPosition.x) * (1.-step(1.8,vPosition.x));
-    vec3 color = mix(vec3(.35,.53,.69),vec3(1.6,.08,.055),damaged);
-    gl_FragColor = vec4(color*(.65+pulse*2.2)*rim,1.);
-  }
-`;
-
-function Scene({ progress, active, tampered }: { progress: MutableRefObject<number>; active: MutableRefObject<boolean>; tampered: MutableRefObject<boolean> }) {
-  const blocks = useRef<THREE.InstancedMesh>(null);
-  const edges = useRef<THREE.InstancedMesh>(null);
-  const hashes = useRef<THREE.InstancedMesh>(null);
-  const rig = useRef<THREE.Group>(null);
-  const chromatic = useRef<ChromaticAberrationEffect>(null);
-  const pointer = useRef(new THREE.Vector2());
-  const localTime = useRef(0);
-  const lastProgress = useRef(0);
-  const fractureStart = useRef(-100);
-  const fractured = useRef(false);
-  const data = useMemo(() => {
-    const uniforms = { uTime: { value: 0 }, uFracture: { value: 0 }, uSurfaceOpacity: { value: .1 } };
-    const blockGeometry = new RoundedBoxGeometry(1, 1, 1, 2, .07);
-    const surfaceGeometry = new THREE.BufferGeometry();
-    surfaceGeometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(FACES.length * 18), 3).setUsage(THREE.DynamicDrawUsage));
-    const surfaceMaterial = new THREE.ShaderMaterial({
-      uniforms, transparent: true, depthWrite: false, side: THREE.DoubleSide,
-      vertexShader: `varying vec3 vPoint; void main() { vPoint = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
-      fragmentShader: `uniform float uSurfaceOpacity; varying vec3 vPoint; void main() { vec3 n = normalize(cross(dFdx(vPoint),dFdy(vPoint))); float light = .2 + .8*pow(1.-abs(n.z),2.); gl_FragColor = vec4(vec3(.36,.48,.59), uSurfaceOpacity * light); }`,
-    });
-    const blockMaterial = new THREE.ShaderMaterial({ vertexShader, fragmentShader: blockFragment, uniforms });
-    const edgeMaterial = new THREE.ShaderMaterial({ vertexShader, fragmentShader: edgeFragment, uniforms });
-    const canvas = document.createElement("canvas"); canvas.width = 512; canvas.height = 64;
-    const ctx = canvas.getContext("2d")!;
-    ctx.font = '24px monospace'; ctx.fillStyle = '#b7ccdd'; ctx.fillText('9f2a · c81b · a604', 8, 40);
-    const texture = new THREE.CanvasTexture(canvas);
-    const hashMaterial = new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: .66, depthWrite: false, side: THREE.DoubleSide });
-    return { uniforms, blockGeometry, surfaceGeometry, surfaceMaterial, blockMaterial, edgeMaterial, hashMaterial, texture, dummy: new THREE.Object3D(), points: Array.from({ length: 16 }, () => new THREE.Vector3()), up: new THREE.Vector3(0, 1, 0), diff: new THREE.Vector3(), mid: new THREE.Vector3() };
-  }, []);
-  useEffect(() => () => { data.blockGeometry.dispose(); data.surfaceGeometry.dispose(); data.surfaceMaterial.dispose(); data.blockMaterial.dispose(); data.edgeMaterial.dispose(); data.hashMaterial.dispose(); data.texture.dispose(); }, [data]);
-  useFrame((state, delta) => {
-    if (!active.current || !blocks.current || !edges.current || !rig.current || !hashes.current) return;
-    const dt = Math.min(delta, .05);
-    localTime.current += dt;
-    const t = localTime.current;
-    lastProgress.current = THREE.MathUtils.damp(lastProgress.current, progress.current, 5, dt);
-    const p = lastProgress.current;
-    const chain = smooth(.15, .95, p);
-    const seal = smooth(2.15, 2.95, p);
-    const fractureTarget = (tampered.current ? 1 : 0) * smooth(1.35, 1.8, p) * (1 - smooth(2.12, 2.5, p));
-    const fracture = THREE.MathUtils.damp(data.uniforms.uFracture.value, fractureTarget, 8, dt);
-    if (fracture > .5 && !fractured.current) { fractureStart.current = t; fractured.current = true; }
-    if (fracture < .1) fractured.current = false;
-    const glitch = Math.max(0, 1 - (t - fractureStart.current) / .42);
-    chromatic.current?.offset.set(glitch * .0022, glitch * .0008);
-    data.uniforms.uTime.value = t;
-    data.uniforms.uFracture.value = fracture;
-    pointer.current.lerp(state.pointer, .035);
-    rig.current.rotation.set(.13 + pointer.current.y * .08, -.25 + pointer.current.x * .12, -.12 + chain * .16);
-    rig.current.position.set(1.35 * (1 - seal) + .65 * seal, .05, 0);
-    const angle = t * .105;
-    VERTICES.forEach((vertex, i) => {
-      const v: number[] = [...vertex];
-      // Sequential rotations in XW, YW and ZW. Norm stays 2, so d=4 is safe.
-      for (let axis = 0; axis < 3; axis++) {
-        const a = angle * [1, .73, .49][axis] + [.35, .54, .12][axis];
-        const x = v[axis], w = v[3];
-        v[axis] = x * Math.cos(a) - w * Math.sin(a);
-        v[3] = x * Math.sin(a) + w * Math.cos(a);
-      }
-      const scale = 4 / (4 - v[3]);
-      const group = i >> 2;
-      const x = (group - 1.5) * 1.55 + ((i & 1) ? .27 : -.27);
-      const y = ((i & 2) ? .27 : -.27) + Math.sin(group * .8) * .2;
-      const z = ((i & 1) ? .2 : -.2);
-      const point = data.points[i];
-      point.set(THREE.MathUtils.lerp(v[0] * scale * 1.55, x, chain), THREE.MathUtils.lerp(v[1] * scale * 1.55, y, chain), THREE.MathUtils.lerp(v[2] * scale * 1.55, z, chain));
-      if (group === 2) { point.y += fracture * ((i & 2) ? .48 : -.48); point.z += fracture * ((i & 1) ? .45 : -.45); }
-      point.lerp(data.mid.set(((i & 1) - .5) * .65, (((i >> 1) & 1) - .5) * .65, ((i >> 2) - 1.5) * .48), seal);
-      data.dummy.position.copy(point);
-      data.dummy.rotation.set(t * .06 * (1 - chain), .2 + fracture * (group === 2 ? i * .16 : 0), .1);
-      data.dummy.scale.setScalar(THREE.MathUtils.lerp(.23, .43, seal));
-      data.dummy.updateMatrix(); blocks.current!.setMatrixAt(i, data.dummy.matrix);
-    });
-    data.uniforms.uSurfaceOpacity.value = .14 * (1 - chain) + .12 * seal;
-    const surfacePosition = data.surfaceGeometry.getAttribute("position") as THREE.BufferAttribute;
-    let surfaceIndex = 0;
-    FACES.forEach(face => {
-      for (const corner of [0, 1, 2, 0, 2, 3]) {
-        const point = data.points[face[corner]];
-        surfacePosition.setXYZ(surfaceIndex++, point.x, point.y, point.z);
-      }
-    });
-    surfacePosition.needsUpdate = true;
-    EDGES.forEach(([a, b], i) => {
-      const start = data.points[a], end = data.points[b];
-      data.diff.subVectors(end, start);
-      data.dummy.position.copy(start).addScaledVector(data.diff, .5);
-      data.dummy.quaternion.setFromUnitVectors(data.up, data.mid.copy(data.diff).normalize());
-      data.dummy.scale.set(.009, data.diff.length(), .009);
-      data.dummy.updateMatrix(); edges.current!.setMatrixAt(i, data.dummy.matrix);
-      if (i < 6) {
-        data.dummy.position.copy(start).lerp(end, (t * .07 + i * .17) % 1);
-        data.dummy.position.y += .12;
-        data.dummy.quaternion.copy(state.camera.quaternion);
-        data.dummy.scale.set(.82, .103, 1);
-        data.dummy.updateMatrix(); hashes.current!.setMatrixAt(i, data.dummy.matrix);
-      }
-    });
-    blocks.current.instanceMatrix.needsUpdate = true;
-    edges.current.instanceMatrix.needsUpdate = true;
-    hashes.current.instanceMatrix.needsUpdate = true;
-    // Four scene draws plus composer passes, comfortably below 40.
+function solid(w: number, h: number, depth: number, chamfer = .14, bevel = .025) {
+  const geometry = new THREE.ExtrudeGeometry(outline(w,h,chamfer), { depth: depth - bevel*2, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 3, steps: 1 });
+  geometry.translate(0,0,-depth/2+bevel); return geometry;
+}
+function mergedBoxes(boxes: number[][]) {
+  const parts = boxes.map(([x,y,z,w,h,d]) => new THREE.BoxGeometry(w,h,d).translate(x,y,z));
+  const merged = mergeGeometries(parts); parts.forEach(p=>p.dispose()); return merged;
+}
+function labelTexture(tampered: boolean) {
+  const canvas = document.createElement("canvas"); canvas.width=1024; canvas.height=256;
+  const ctx=canvas.getContext("2d")!; ctx.fillStyle="#141516"; ctx.fillRect(0,0,1024,256);
+  ctx.textAlign="center"; ctx.font="42px monospace"; ctx.fillStyle="#b0b2b4";
+  ctx.fillText("BLACK BOX / FDR-01",512,95); ctx.font="34px monospace";
+  ctx.fillStyle=tampered?"#ff3b30":"#85888b"; ctx.fillText(tampered?"TAMPERED":"SEALED",512,172);
+  const texture=new THREE.CanvasTexture(canvas); texture.colorSpace=THREE.SRGBColorSpace; return texture;
+}
+function Recorder({ motion, tampered }: { motion: MutableRefObject<Motion>; tampered: MutableRefObject<boolean> }) {
+  const rig=useRef<THREE.Group>(null); const displaced=useRef<THREE.Mesh>(null);
+  const led=useRef<THREE.MeshBasicMaterial>(null); const leak=useRef<THREE.MeshBasicMaterial>(null);
+  const scan=useRef<THREE.Mesh>(null); const label=useRef<THREE.MeshPhysicalMaterial>(null);
+  const positioned=useRef(false);
+  const fault=useRef(0); const elapsed=useRef(0); const scanTime=useRef(10); const wasTampered=useRef(false);
+  const assets=useMemo(()=> {
+    const ribs: number[][]=[]; const moving: number[][]=[];
+    for(let i=0;i<35;i++) (i>=16&&i<=19?moving:ribs).push([0,.91-i*.052,.997,2.24,.043,.038]);
+    const vents: number[][]=[];
+    // Recessed fins behind four structural rails on both side panels.
+    for(const sign of [-1,1]) for(let i=0;i<25;i++) vents.push([sign*1.205,-.99+i*.082,-.07,.024,.038,1.44]);
+    const frames: number[][]=[];
+    for(const sign of [-1,1]) {
+      for(const y of [-1.1,1.1]) frames.push([sign*1.24,y,-.07,.095,.14,1.75]);
+      for(const z of [-.88,.74]) frames.push([sign*1.24,0,z,.095,2.2,.13]);
+    }
+    // A true countersunk annulus with a recessed hexagonal socket, not a hex cap.
+    const bolt= new THREE.Shape(); bolt.absarc(0,0,.081,0,Math.PI*2,false);
+    const socket=new THREE.Path(); for(let i=0;i<6;i++) { const a=-i*Math.PI/3; if(i===0) socket.moveTo(Math.cos(a)*.038,Math.sin(a)*.038); else socket.lineTo(Math.cos(a)*.038,Math.sin(a)*.038); } socket.closePath(); bolt.holes.push(socket);
+    const boltGeometry=new THREE.ExtrudeGeometry(bolt,{depth:.025,bevelEnabled:true,bevelSize:.008,bevelThickness:.009,bevelSegments:2,steps:1});
+    const bossProfile=[new THREE.Vector2(.084,0),new THREE.Vector2(.115,0),new THREE.Vector2(.13,.012),new THREE.Vector2(.12,.048),new THREE.Vector2(.09,.052),new THREE.Vector2(.084,0)];
+    const boss=new THREE.LatheGeometry(bossProfile,32); boss.rotateX(Math.PI/2);
+    const cradle=solid(2.82,.23,2.37,.1,.025);
+    const step=solid(2.59,.15,2.2,.1,.02);
+    const feet=mergedBoxes([[-1.13,-1.83,-.85,.43,.16,.5],[1.13,-1.83,-.85,.43,.16,.5],[-1.13,-1.83,.85,.43,.16,.5],[1.13,-1.83,.85,.43,.16,.5]]);
+    const material=new THREE.MeshPhysicalMaterial({color:"#292b2d",roughness:.55,metalness:.42});
+    // Recording light is an emissive mask on the physical milled ribs only.
+    const uniforms={time:{value:0},fault:{value:0}};
+    material.onBeforeCompile=shader=> { Object.assign(shader.uniforms,uniforms); shader.vertexShader=shader.vertexShader.replace("#include <common>","#include <common>\nvarying vec3 localPoint;").replace("#include <begin_vertex>","#include <begin_vertex>\nlocalPoint = position;"); shader.fragmentShader=shader.fragmentShader.replace("#include <common>","#include <common>\nvarying vec3 localPoint; uniform float time; uniform float fault;").replace("#include <emissivemap_fragment>","#include <emissivemap_fragment>\nfloat head = 1.15 - mod(time * .65, 4.4); float pulse = exp(-pow((localPoint.y-head)*28.,2.)); totalEmissiveRadiance += vec3(1.7)*pulse*(1.-fault)*step(.999,localPoint.z);"); };
+    return {body:solid(2.30,2.76,1.83),shell:solid(2.4,2.76,.16),ribs:mergedBoxes(ribs),moving:mergedBoxes(moving),vents:mergedBoxes(vents),frames:mergedBoxes(frames),boltGeometry,boss,cradle,step,feet,material,uniforms,sealed:labelTexture(false),tampered:labelTexture(true)};
+  },[]);
+  useEffect(()=>()=>{ Object.values(assets).forEach(value=>{if(value instanceof THREE.BufferGeometry||value instanceof THREE.Material||value instanceof THREE.Texture)value.dispose();}); },[assets]);
+  useFrame((state,delta)=> {
+    const dt=Math.min(delta,.05); const t=elapsed.current+=dt; const target=motion.current;
+    if(!rig.current)return;
+    rig.current.visible=target.visible;
+    const distance=state.camera.position.z;
+    const height=2*Math.tan(THREE.MathUtils.degToRad(36/2))*distance;
+    const width=height*state.size.width/state.size.height;
+    rig.current.position.x=positioned.current?THREE.MathUtils.damp(rig.current.position.x,target.x*width,7,dt):target.x*width;
+    rig.current.position.y=positioned.current?THREE.MathUtils.damp(rig.current.position.y,target.y*height,7,dt):target.y*height;
+    const scale=target.size*height/4.4;
+    rig.current.scale.setScalar(positioned.current?THREE.MathUtils.damp(rig.current.scale.x,scale,7,dt):scale);
+    positioned.current=true;
+    const angle=target.stage<1?-.47:target.stage<2?-.65:.42;
+    rig.current.rotation.y=THREE.MathUtils.damp(rig.current.rotation.y,angle+Math.sin(t*.16)*.025,5,dt);
+    rig.current.rotation.x=THREE.MathUtils.damp(rig.current.rotation.x,.16,5,dt);
+    state.camera.position.z=THREE.MathUtils.damp(distance,target.stage>1.5&&target.stage<2.5?9.6:10,4,dt);
+    if(tampered.current&&!wasTampered.current)scanTime.current=0;
+    wasTampered.current=tampered.current; scanTime.current+=dt;
+    fault.current=THREE.MathUtils.damp(fault.current,tampered.current?1:0,7,dt);
+    const f=fault.current;
+    if(displaced.current) displaced.current.position.z=f*.045;
+    if(leak.current)leak.current.opacity=f*.9;
+    if(led.current)led.current.color.setRGB(1,1,1).multiplyScalar(.22).lerp(new THREE.Color("#ff3b30").multiplyScalar(1.2+Math.sin(t*12)*.6),f);
+    if(label.current)label.current.map=f>.35?assets.tampered:assets.sealed;
+    if(scan.current){scan.current.visible=tampered.current&&scanTime.current<1.4;scan.current.position.y=1.05-scanTime.current/1.4*2.15;}
+    assets.uniforms.time.value=t; assets.uniforms.fault.value=f;
   });
-  return <>
-    <PerspectiveCamera makeDefault position={[0, 0, 10.8]} fov={43} />
-    <group ref={rig}>
-      <mesh geometry={data.surfaceGeometry} material={data.surfaceMaterial} frustumCulled={false} />
-      <instancedMesh ref={blocks} args={[data.blockGeometry, data.blockMaterial, 16]} frustumCulled={false} />
-      <instancedMesh ref={edges} args={[undefined, data.edgeMaterial, 32]} frustumCulled={false}><cylinderGeometry args={[1, 1, 1, 6]} /></instancedMesh>
-      <instancedMesh ref={hashes} args={[undefined, data.hashMaterial, 6]} frustumCulled={false}><planeGeometry /></instancedMesh>
-    </group>
-    <EffectComposer multisampling={0}>
-      <Bloom luminanceThreshold={.65} intensity={.65} mipmapBlur />
-      <Noise opacity={.025} blendFunction={BlendFunction.SOFT_LIGHT} />
-      <ChromaticAberration ref={chromatic} offset={new THREE.Vector2(0, 0)} radialModulation={false} modulationOffset={0} />
-    </EffectComposer>
-  </>;
+  return <group ref={rig} rotation={[.16,-.47,0]}>
+    <mesh geometry={assets.body} position={[0,0,-.105]} material={assets.material} />
+    <mesh geometry={assets.shell} position={[0,0,.91]} material={assets.material} />
+    <mesh geometry={assets.ribs} material={assets.material}/>
+    <mesh ref={displaced} geometry={assets.moving} material={assets.material}/>
+    <mesh position={[0,-.005,.999]}><planeGeometry args={[2.2,.21]}/><meshBasicMaterial ref={leak} color="#ff3b30" transparent opacity={0} toneMapped={false}/></mesh>
+    <mesh geometry={assets.vents}><meshPhysicalMaterial color="#111315" metalness={.35} roughness={.7}/></mesh>
+    <mesh geometry={assets.frames} material={assets.material}/>
+    {[-1,1].flatMap(x=>[-1.17,1.17].map(y=><group key={`${x}-${y}`} position={[x,y,1.005]}><mesh geometry={assets.boss} material={assets.material}/><mesh geometry={assets.boltGeometry}><meshPhysicalMaterial color="#73777b" metalness={.8} roughness={.38}/></mesh></group>))}
+    <mesh position={[-.73,1.1,1.012]} rotation={[Math.PI/2,0,0]}><cylinderGeometry args={[.043,.043,.025,20]}/><meshPhysicalMaterial color="#101112" metalness={.5} roughness={.5}/></mesh>
+    <mesh position={[-.73,1.1,1.031]}><sphereGeometry args={[.023,12,8]}/><meshBasicMaterial ref={led} color="#444444" toneMapped={false}/></mesh>
+    <mesh position={[0,-1.06,.994]}><boxGeometry args={[1.34,.39,.012]}/><meshPhysicalMaterial ref={label} map={assets.sealed} bumpMap={assets.sealed} bumpScale={-.002} metalness={.45} roughness={.65}/></mesh>
+    <mesh ref={scan} position={[0,0,1.055]} visible={false}><planeGeometry args={[2.21,.007]}/><meshBasicMaterial color="#ff3b30" toneMapped={false}/></mesh>
+    <mesh geometry={assets.cradle} position={[0,-1.68,0]}><meshPhysicalMaterial color="#17191b" metalness={.45} roughness={.6}/></mesh>
+    <mesh geometry={assets.step} position={[0,-1.5,0]} material={assets.material}/>
+    <mesh geometry={assets.feet}><meshPhysicalMaterial color="#111315" roughness={.75} metalness={.25}/></mesh>
+    <ContactShadows position={[0,-1.93,0]} opacity={.55} scale={7} blur={2.8} far={4} frames={1} resolution={256}/>
+  </group>;
 }
 
-export default function FlightCanvas({ onReady, onFailure }: { onReady: () => void; onFailure: () => void }) {
-  const progress = useRef(0);
-  const tampered = useRef(false);
-  const active = useRef(true);
-  const wrapper = useRef<HTMLDivElement>(null);
-  const canvasState = useRef<RootState | null>(null);
-  useEffect(() => {
-    const main = document.querySelector(".flight-main");
-    tampered.current = !!document.querySelector(".integrity-failed");
-    let intersecting = true;
-    const updateActive = () => { active.current = intersecting && !document.hidden; canvasState.current?.setFrameloop(active.current ? "always" : "never"); };
-    const observer = new IntersectionObserver(([entry]) => { intersecting = entry.isIntersecting; updateActive(); });
-    if (main) observer.observe(main);
-    const update = () => {
-      const sections = Array.from(document.querySelectorAll<HTMLElement>("[data-flight-stage]"));
-      const anchor = innerHeight * .48;
-      let value = 0;
-      for (let i = 0; i < sections.length - 1; i++) {
-        const aRect = sections[i].getBoundingClientRect();
-        const bRect = sections[i + 1].getBoundingClientRect();
-        const a = aRect.top + aRect.height * .5;
-        const b = bRect.top + bRect.height * .5;
-        if (a <= anchor) value = i + THREE.MathUtils.clamp((anchor - a) / (b - a), 0, 1);
-      }
-      progress.current = value;
+export default function FlightCanvas({onReady,onFailure}:{onReady:()=>void;onFailure:()=>void}) {
+  const motion=useRef<Motion>({x:.24,y:0,size:.8,stage:0,visible:true});
+  const tampered=useRef(false); const root=useRef<RootState|null>(null);
+  useEffect(()=> {
+    const sections=Array.from(document.querySelectorAll<HTMLElement>("[data-flight-stage]"));
+    const update=()=> {
+      const nav=document.querySelector(".site-nav")?.getBoundingClientRect().height??78;
+      const view=innerHeight-nav; const anchor=nav;
+      const centres=sections.map(el=>{const r=el.getBoundingClientRect();return r.top;});
+      let stage=0; for(let i=0;i<centres.length-1;i++)if(centres[i]<=anchor)stage=i+THREE.MathUtils.clamp((anchor-centres[i])/(centres[i+1]-centres[i]),0,1);
+      const slots=sections.map(section=> {
+        const slot=section.querySelector<HTMLElement>(".model-slot")!;
+        const rect=slot.getBoundingClientRect();
+        if(section.dataset.flightStage!=="hero")return rect;
+        const headline=section.querySelector("h1")!.getBoundingClientRect();
+        // Centre at 69vw, but reserve the headline's actual bounds plus 64px.
+        // Shrink the old stage by 15%, then fit it into that clear right column.
+        const centre=innerWidth*.69;
+        const halfWidth=Math.max(0,Math.min(rect.width*.85/2,centre-headline.right-64,innerWidth*.95-centre));
+        return {left:centre-halfWidth,top:rect.top+rect.height*.075,width:halfWidth*2,height:rect.height*.85};
+      });
+      const i=Math.min(Math.floor(stage),slots.length-1); const j=Math.min(i+1,slots.length-1); const mix=THREE.MathUtils.smoothstep(stage-i,0,1);
+      const a=slots[i],b=slots[j]; const lerp=THREE.MathUtils.lerp;
+      const visible=sections.some(el=>{const r=el.getBoundingClientRect();return r.bottom>nav&&r.top<innerHeight;});
+      // Follow real reserved rectangles, including the smaller slot below the final CTA.
+      motion.current={x:(lerp(a.left+a.width/2,b.left+b.width/2,mix)/innerWidth-.5),y:.5-(lerp(a.top+a.height/2,b.top+b.height/2,mix)-nav)/view,size:Math.min(lerp(a.height,b.height,mix)/view,lerp(a.width,b.width,mix)/view),stage,visible};
+      root.current?.setFrameloop(!document.hidden&&visible?"always":"never");
     };
-    const updateTamper = (event: Event) => { tampered.current = (event as CustomEvent<boolean>).detail; };
-    window.addEventListener("flight-tamper", updateTamper);
-    document.addEventListener("visibilitychange", updateActive);
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    update(); updateActive();
-    return () => { observer.disconnect(); window.removeEventListener("flight-tamper", updateTamper); document.removeEventListener("visibilitychange", updateActive); window.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
-  }, []);
-  return <div ref={wrapper} className="flight-canvas"><Canvas dpr={[1, 1.5]} gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }} onCreated={state => {
-    canvasState.current = state;
-    state.gl.setClearColor(0x07090c, 0);
-    state.gl.domElement.addEventListener("webglcontextlost", event => { event.preventDefault(); onFailure(); }, { once: true });
-    if (document.hidden) { active.current = false; state.setFrameloop("never"); }
-    onReady();
-  }} fallback={null}><Scene progress={progress} active={active} tampered={tampered} /></Canvas></div>;
+    const tamper=(event:Event)=>{tampered.current=(event as CustomEvent<boolean>).detail;};
+    tampered.current=!!document.querySelector(".integrity-failed");
+    window.addEventListener("flight-tamper",tamper);window.addEventListener("scroll",update,{passive:true});window.addEventListener("resize",update);document.addEventListener("visibilitychange",update);
+    const observer=new ResizeObserver(update);sections.forEach(el=>{observer.observe(el);const headline=el.querySelector("h1");if(headline)observer.observe(headline);});update();
+    return()=>{observer.disconnect();window.removeEventListener("flight-tamper",tamper);window.removeEventListener("scroll",update);window.removeEventListener("resize",update);document.removeEventListener("visibilitychange",update);};
+  },[]);
+  return <div className="flight-canvas"><Canvas dpr={[1,1.5]} gl={{alpha:true,antialias:false,preserveDrawingBuffer:typeof window!=="undefined"&&new URLSearchParams(window.location.search).has("poster")}} onCreated={state=>{root.current=state;state.gl.setClearColor(0x090909,0);state.gl.domElement.addEventListener("webglcontextlost",event=>{event.preventDefault();onFailure();},{once:true});onReady();}}>
+    <PerspectiveCamera makeDefault position={[0,0,10]} fov={36}/><ambientLight intensity={.5}/>
+    <directionalLight position={[-4,6,5]} intensity={3}/><directionalLight position={[4,3,-4]} intensity={5}/>
+    <Environment resolution={128} frames={1}><Lightformer position={[-4,3,4]} scale={[3,6,1]} intensity={4}/><Lightformer position={[4,1,2]} rotation={[0,-Math.PI/4,0]} scale={[2,5,1]} intensity={2}/><Lightformer position={[1,4,-3]} rotation={[0,Math.PI,0]} scale={[5,3,1]} intensity={5}/></Environment>
+    <Recorder motion={motion} tampered={tampered}/>
+    <EffectComposer multisampling={0}><N8AO aoRadius={.18} intensity={1.2} halfRes/><Bloom luminanceThreshold={1.1} intensity={.15} mipmapBlur={false}/></EffectComposer>
+  </Canvas></div>;
 }
