@@ -6,6 +6,11 @@ import { Bloom, EffectComposer, N8AO } from "@react-three/postprocessing";
 import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { BenchPlate, ChainHalo } from "./ChainHalo";
+
+// Maximum turn toward the pointer, in radians.
+const POINTER_YAW = .14;
+const POINTER_PITCH = .06;
 
 type Motion = { x: number; y: number; size: number; stage: number; visible: boolean };
 // Dimensions in decimetres: body 2.4 × 2.76 × 2.04, excluding the cradle.
@@ -57,13 +62,21 @@ function Recorder({ motion, tampered }: { motion: MutableRefObject<Motion>; tamp
     const cradle=solid(2.82,.23,2.37,.1,.025);
     const step=solid(2.59,.15,2.2,.1,.02);
     const feet=mergedBoxes([[-1.13,-1.83,-.85,.43,.16,.5],[1.13,-1.83,-.85,.43,.16,.5],[-1.13,-1.83,.85,.43,.16,.5],[1.13,-1.83,.85,.43,.16,.5]]);
-    const material=new THREE.MeshPhysicalMaterial({color:"#292b2d",roughness:.55,metalness:.42});
+    const material=new THREE.MeshPhysicalMaterial({color:"#292b2d",roughness:.55,metalness:.42,clearcoat:.35,clearcoatRoughness:.32});
     // Recording light is an emissive mask on the physical milled ribs only.
     const uniforms={time:{value:0},fault:{value:0}};
     material.onBeforeCompile=shader=> { Object.assign(shader.uniforms,uniforms); shader.vertexShader=shader.vertexShader.replace("#include <common>","#include <common>\nvarying vec3 localPoint;").replace("#include <begin_vertex>","#include <begin_vertex>\nlocalPoint = position;"); shader.fragmentShader=shader.fragmentShader.replace("#include <common>","#include <common>\nvarying vec3 localPoint; uniform float time; uniform float fault;").replace("#include <emissivemap_fragment>","#include <emissivemap_fragment>\nfloat head = 1.15 - mod(time * .65, 4.4); float pulse = exp(-pow((localPoint.y-head)*28.,2.)); totalEmissiveRadiance += vec3(1.7)*pulse*(1.-fault)*step(.999,localPoint.z);"); };
     return {body:solid(2.30,2.76,1.83),shell:solid(2.4,2.76,.16),ribs:mergedBoxes(ribs),moving:mergedBoxes(moving),vents:mergedBoxes(vents),frames:mergedBoxes(frames),boltGeometry,boss,cradle,step,feet,material,uniforms,sealed:labelTexture(false),tampered:labelTexture(true)};
   },[]);
   useEffect(()=>()=>{ Object.values(assets).forEach(value=>{if(value instanceof THREE.BufferGeometry||value instanceof THREE.Material||value instanceof THREE.Texture)value.dispose();}); },[assets]);
+  // The canvas ignores pointer events, so track the pointer on the window.
+  const pointer=useRef({x:0,y:0});
+  useEffect(()=> {
+    const move=(event:PointerEvent)=>{ pointer.current={x:event.clientX/innerWidth*2-1,y:event.clientY/innerHeight*2-1}; };
+    const leave=()=>{ pointer.current={x:0,y:0}; };
+    window.addEventListener("pointermove",move,{passive:true}); document.documentElement.addEventListener("pointerleave",leave);
+    return()=>{ window.removeEventListener("pointermove",move); document.documentElement.removeEventListener("pointerleave",leave); };
+  },[]);
   useFrame((state,delta)=> {
     const dt=Math.min(delta,.05); const t=elapsed.current+=dt; const target=motion.current;
     if(!rig.current)return;
@@ -77,8 +90,8 @@ function Recorder({ motion, tampered }: { motion: MutableRefObject<Motion>; tamp
     rig.current.scale.setScalar(positioned.current?THREE.MathUtils.damp(rig.current.scale.x,scale,7,dt):scale);
     positioned.current=true;
     const angle=target.stage<1?-.47:target.stage<2?-.65:.42;
-    rig.current.rotation.y=THREE.MathUtils.damp(rig.current.rotation.y,angle+Math.sin(t*.16)*.025,5,dt);
-    rig.current.rotation.x=THREE.MathUtils.damp(rig.current.rotation.x,.16,5,dt);
+    rig.current.rotation.y=THREE.MathUtils.damp(rig.current.rotation.y,angle+Math.sin(t*.16)*.025+pointer.current.x*POINTER_YAW,4,dt);
+    rig.current.rotation.x=THREE.MathUtils.damp(rig.current.rotation.x,.16+pointer.current.y*POINTER_PITCH,4,dt);
     state.camera.position.z=THREE.MathUtils.damp(distance,target.stage>1.5&&target.stage<2.5?9.6:10,4,dt);
     if(tampered.current&&!wasTampered.current)scanTime.current=0;
     wasTampered.current=tampered.current; scanTime.current+=dt;
@@ -107,6 +120,8 @@ function Recorder({ motion, tampered }: { motion: MutableRefObject<Motion>; tamp
     <mesh geometry={assets.cradle} position={[0,-1.68,0]}><meshPhysicalMaterial color="#17191b" metalness={.45} roughness={.6}/></mesh>
     <mesh geometry={assets.step} position={[0,-1.5,0]} material={assets.material}/>
     <mesh geometry={assets.feet}><meshPhysicalMaterial color="#111315" roughness={.75} metalness={.25}/></mesh>
+    <ChainHalo fault={fault}/>
+    <BenchPlate y={-1.915}/>
     <ContactShadows position={[0,-1.93,0]} opacity={.55} scale={7} blur={2.8} far={4} frames={1} resolution={256}/>
   </group>;
 }

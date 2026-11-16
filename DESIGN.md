@@ -16,7 +16,9 @@ The reference is `design/recorder-concept.jpg`: a sealed matte black flight reco
 
 VERIFY displaces four ribs by 4.5mm at the model scale, reveals a thin red gap, blinks the red LED, sweeps a red scan once, and changes the label to TAMPERED. Leaving verification reseats the section, fades the red and restores the dim white LED. No glass or internal plate stack remains.
 
-MeshPhysicalMaterial uses matte anodised black, roughness .55, metalness .42, with satin socket hardware and a darker cradle. Local Environment Lightformers provide key, fill and rim without network assets. Contact shadows bake once; half-resolution N8AO and tight bloom finish the scene.
+A hash chain orbits the enclosure (`components/flight/ChainHalo.tsx`): 30 thin ledger blocks on a tilted ellipse, joined in sequence by fine links, one instanced mesh and one line set. Each block flashes white as it passes the front face, where the rib pulse writes, and leaves a short fading trail. In VERIFY one block is knocked out of the orbit and it and its two links turn red; leaving verification reseats it. A faint calibration plate (three rings and a tick scale, one line set) turns slowly under the cradle. The enclosure turns up to .14 rad toward the pointer.
+
+MeshPhysicalMaterial uses matte anodised black, roughness .55, metalness .42, with a satin clearcoat (.35, roughness .32), satin socket hardware and a darker cradle. Local Environment Lightformers provide key, fill and rim without network assets. Contact shadows bake once; half-resolution N8AO and tight bloom finish the scene.
 
 One WebGL canvas is fixed below navigation, outside the main content and without clipping ancestors. Scroll maps real reserved model rectangles into camera space: hero right, RECORD left, VERIFY right opposite the terminal, and briefing smaller below the CTA. Eased position, rotation, scale and camera follow these anchors. Rendering pauses only when no flight section is visible or the document is hidden. DPR caps at 1.5. Repeated ribs, fins, frames and feet use merged geometry. The steady draw budget targets fewer than 60 calls; confirm via a browser GPU capture before release.
 
